@@ -17,22 +17,26 @@ public class PlayerController : MonoBehaviour
     private Vector3 rotation = new Vector3(0f, 0f, 0f);
 
     // vertical movement variables
-    public float gravityScale;
-    [Range(0f, 1f)]
-    public float floatingGravityMultiplier;
+    public float normalGravityScale;
+    public float floatingGravityScale;
     public float initialJumpForce;
     public float jumpForceReductionScale;
     public float floatTimeLimit;
 
     private float floatTime = 0f;
     private float currentJumpForce;
+    private float currentGravityScale;
     private bool isJumping = false;
     private bool isFalling = false;
     private bool isFloating = false;
 
     void Start()
     {
+        Cursor.lockState = CursorLockMode.Confined;
+        Cursor.visible = false;
+
         currentJumpForce = initialJumpForce;
+        currentGravityScale = normalGravityScale;
     }
 
     void Update()
@@ -44,6 +48,7 @@ public class PlayerController : MonoBehaviour
 
         // placing the reset here allows the player to jump at the same frame as it falls down
         ResetJumpVariables();
+        Debug.Log(floatTime / floatTimeLimit);
     }
 
     // function that controls horizontal movement
@@ -84,7 +89,7 @@ public class PlayerController : MonoBehaviour
                 if (Input.GetButtonUp("Jump"))
                 {
                     isFalling = true;
-                    moveVector.y += Physics.gravity.y * Time.deltaTime * gravityScale;
+                    moveVector.y += Physics.gravity.y * Time.deltaTime * currentGravityScale;
                     return;
                 }
 
@@ -92,7 +97,8 @@ public class PlayerController : MonoBehaviour
                 if (currentJumpForce <= 0f)
                 {
                     isFloating = true;
-                    moveVector.y += Physics.gravity.y * Time.deltaTime * gravityScale * floatingGravityMultiplier;
+                    currentGravityScale = floatingGravityScale;
+                    moveVector.y += Physics.gravity.y * Time.deltaTime * currentGravityScale;
                     return;
                 }
 
@@ -106,7 +112,7 @@ public class PlayerController : MonoBehaviour
             // now if the character is floating apply some scaled gravity
             if (isFloating)
             {
-                moveVector.y += Physics.gravity.y * Time.deltaTime * gravityScale * floatingGravityMultiplier;
+                moveVector.y += Physics.gravity.y * Time.deltaTime * currentGravityScale;
 
                 // if the float time runs out, the character starts to fall
                 if (floatTime > floatTimeLimit)
@@ -117,11 +123,17 @@ public class PlayerController : MonoBehaviour
                 }
 
                 floatTime += Time.deltaTime;
+                currentGravityScale = Mathf.Lerp(floatingGravityScale, normalGravityScale, floatTime / floatTimeLimit);
                 return;
             }
 
             // this handles the falling physics
-            moveVector.y += Physics.gravity.y * Time.deltaTime * gravityScale;
+            moveVector.y += Physics.gravity.y * Time.deltaTime * currentGravityScale;
+            floatTime += Time.deltaTime;
+            if (currentGravityScale < normalGravityScale)
+            {
+                currentGravityScale = Mathf.Lerp(floatingGravityScale, normalGravityScale, floatTime / floatTimeLimit);
+            }
         }
     }
 
@@ -134,6 +146,7 @@ public class PlayerController : MonoBehaviour
             isFalling = false;
             isFloating = false;
             currentJumpForce = initialJumpForce;
+            currentGravityScale = normalGravityScale;
             floatTime = 0f;
 
             // and allow the player to jump again right after reaching the ground
